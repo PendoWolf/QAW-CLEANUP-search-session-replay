@@ -81,12 +81,21 @@ export default function App() {
         >
           Increment
         </button>
+        
+        <button
+          data-testid="btn-multiply"
+          onClick={() => run("multiply", api.increment)}
+        >
+          Multiply
+        </button>
+          
         <button
           data-testid="btn-decrement"
           onClick={() => run("decrement", api.decrement)}
         >
           Decrement
         </button>
+          
         <button data-testid="btn-reset" onClick={() => run("reset", api.reset)}>
           Reset
         </button>
