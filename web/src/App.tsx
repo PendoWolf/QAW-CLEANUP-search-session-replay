@@ -4,9 +4,9 @@ import { api, type AppState } from "./api";
 // Seam for Pendo. Novus installs the Pendo agent, which provides window.pendo
 // at runtime; this fires a Track Event for each action. No-op when the agent
 // isn't present (local dev), so the app and Playwright mocks both stay simple.
-function trackEvent(name: string) {
+function trackEvent(eventName: string, properties?: Record<string, unknown>) {
   if (typeof window !== "undefined") {
-    window.pendo?.track?.(`demo-${name}`);
+    window.pendo?.track?.(eventName, properties);
   }
 }
 
@@ -15,12 +15,48 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   const run = async (name: string, fn: () => Promise<AppState>) => {
+    const previousCounter = state.counter;
     try {
       setError(null);
-      setState(await fn());
-      trackEvent(name);
+      const newState = await fn();
+      setState(newState);
+
+      // Fire Track Event with metadata appropriate to each action
+      switch (name) {
+        case "increment":
+        case "decrement":
+          trackEvent(`demo-${name}`, {
+            previousValue: previousCounter,
+            newValue: newState.counter,
+            lastAction: newState.lastAction,
+          });
+          break;
+        case "reset":
+          trackEvent(`demo-${name}`, {
+            previousValue: previousCounter,
+            newValue: newState.counter,
+          });
+          break;
+        case "refresh":
+          trackEvent(`demo-${name}`, {
+            currentValue: newState.counter,
+            lastAction: newState.lastAction,
+          });
+          break;
+        default:
+          trackEvent(`demo-${name}`);
+          break;
+      }
     } catch (e) {
-      setError((e as Error).message);
+      const errorMessage = (e as Error).message;
+      setError(errorMessage);
+
+      // Track failure — fires for any counter action that fails
+      trackEvent("counter_action_failed", {
+        actionName: name,
+        errorMessage: errorMessage.substring(0, 200),
+        currentCounterValue: previousCounter,
+      });
     }
   };
 
